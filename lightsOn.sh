@@ -31,11 +31,12 @@
 # Modify these variables if you want this script to detect if Mplayer,
 # VLC, Minitube, or Firefox or Chromium Flash Video are Fullscreen and disable
 # xscreensaver/kscreensaver and PowerManagement.
-mplayer_detection=1
+mplayer_detection=0
 vlc_detection=1
 firefox_flash_detection=1
-chromium_flash_detection=1
-minitube_detection=1
+firefox_html5_detection=$firefox_flash_detection
+chromium_flash_detection=0
+minitube_detection=0
 
 # Names of programs which, when running, you wish to delay the screensaver.
 delay_progs=() # For example ('ardour2' 'gmpc')
@@ -103,18 +104,21 @@ checkFullscreen()
                     delayScreensaver
                 fi
             fi
+
+        isFlashRunning
+        var=$?
+        if [[ $var -eq 1 ]];then
+            delayScreensaver
+        fi
     done
 }
 
 
+# flash doesn't display as "full screen" on firefox,
+# so we treat it as a special case
+# We just look for focus
 
-
-
-# check if active windows is mplayer, vlc or firefox
-#TODO only window name in the variable activ_win_id, not whole line.
-#Then change IFs to detect more specifically the apps "<vlc>" and if process name exist
-
-isAppRunning()
+isFlashRunning()
 {
     #Get title of active window
     activ_win_title=`xprop -id $activ_win_id | grep "WM_CLASS(STRING)"`   # I used WM_NAME(STRING) before, WM_CLASS more accurate.
@@ -129,6 +133,32 @@ isAppRunning()
             #(why was I using this line avobe? delete if pgrep -lc works ok)
             #flash_process=`pgrep -lc plugin-containe`
             if [[ $flash_process -ge 1 ]];then
+                return 1
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+
+# check if active windows is mplayer, vlc or firefox
+#TODO only window name in the variable activ_win_id, not whole line.
+#Then change IFs to detect more specifically the apps "<vlc>" and if process name exist
+
+isAppRunning()
+{
+    #Get title of active window
+    activ_win_title=`xprop -id $activ_win_id | grep "WM_CLASS(STRING)"`   # I used WM_NAME(STRING) before, WM_CLASS more accurate.
+
+
+
+    # Check if user want to detect HTML Video fullscreen on Firefox, modify variable firefox_html5_detection if you dont want Firefox detection
+    if [ $firefox_html5_detection == 1 ];then
+        if [[ "$activ_win_title" = *Firefox* ]];then
+        # Check if firefox process is actually running
+            firefox_process=`pgrep -lfc "firefox"`
+            if [[ $firefox_process -ge 1 ]];then
                 return 1
             fi
         fi
@@ -237,3 +267,4 @@ done
 
 
 exit 0
+
